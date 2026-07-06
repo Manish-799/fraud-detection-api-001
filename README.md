@@ -1,52 +1,122 @@
 # Fraud Detection API
 
-An end-to-end machine learning backend service for detecting fraudulent financial transactions.
+A production-oriented machine learning backend for real-time financial transaction fraud detection.
 
-This project uses a trained scikit-learn model served through a FastAPI backend. It supports user authentication, JWT-protected prediction endpoints, prediction history, model metadata, environment-based configuration, Docker support, and database logging.
+The project serves a trained scikit-learn fraud detection pipeline through a JWT-secured FastAPI REST API. It supports authenticated predictions, user-specific prediction history, PostgreSQL persistence, model metadata, Dockerized deployment, and probability-threshold tuning for an imbalanced fraud dataset.
+
+## Live API
+
+**Swagger UI:**
+https://fraud-detection-api-tzp4.onrender.com/docs
+
+**Health Check:**
+https://fraud-detection-api-tzp4.onrender.com/health
+
+> The API is hosted on Render. The first request may take longer when the free service is inactive.
 
 ---
 
 ## Features
 
-* Fraud prediction using a trained machine learning model
-* FastAPI backend with Swagger documentation
+* Real-time fraud probability prediction
+* FastAPI REST API with interactive OpenAPI/Swagger documentation
 * User registration and login
-* JWT authentication
-* Protected prediction endpoint
+* JWT-based authentication
+* Argon2 password hashing
+* Protected prediction endpoints
 * User-specific prediction history
-* SQLAlchemy database integration
-* SQLite database for local development
-* Persistent local database storage
-* Model threshold tuning
-* Risk-level scoring
+* SQLAlchemy ORM integration
+* PostgreSQL persistence in production
+* SQLite support for local development
+* Validation-based classification threshold tuning
+* Fraud risk-level scoring
+* Model version and metadata endpoint
 * Environment-based configuration
-* Model metadata endpoint
 * Docker and Docker Compose support
+* Render deployment
 
 ---
 
 ## Tech Stack
 
-* Python
+### Backend
+
+* Python 3.11
 * FastAPI
+* Uvicorn
+* Pydantic
+
+### Machine Learning
+
 * scikit-learn
 * pandas
+* Random Forest Classifier
+* joblib
+
+### Authentication
+
+* JSON Web Tokens
+* python-jose
+* Argon2 password hashing through pwdlib
+
+### Database
+
 * SQLAlchemy
-* SQLite
-* JWT
-* pwdlib Argon2
-* Pydantic
-* Uvicorn
+* PostgreSQL with Neon in production
+* SQLite for local development
+* Psycopg 3
+
+### Deployment
+
 * Docker
 * Docker Compose
+* Render
+* Neon PostgreSQL
+
+---
+
+## Architecture
+
+```text
+                         Client / Swagger UI
+                                  |
+                                  v
+                           FastAPI REST API
+                                  |
+                 +----------------+----------------+
+                 |                                 |
+                 v                                 v
+          JWT Authentication                Prediction Endpoint
+                 |                                 |
+                 v                                 v
+             User Identity                 ML Inference Pipeline
+                                                    |
+                                                    v
+                                          Fraud Probability
+                                                    |
+                                                    v
+                                      Validation-Selected Threshold
+                                                    |
+                                                    v
+                                      Prediction + Risk Level
+                                                    |
+                 +----------------------------------+
+                 |
+                 v
+          PostgreSQL Database
+                 |
+          +------+------+
+          |             |
+        Users      Prediction History
+```
 
 ---
 
 ## Project Structure
 
 ```text
-fraud_detection/
-│
+fraud-detection-api/
+|
 ├── app/
 │   ├── main.py
 │   ├── config.py
@@ -63,16 +133,11 @@ fraud_detection/
 │       └── fraud_model.pkl
 │
 ├── data/
-│   └── fraud.csv
-│
-├── docs/
-│   └── test_flow.md
+│   └── .gitkeep
 │
 ├── storage/
-│   ├── .gitkeep
-│   └── fraud_detection.db
+│   └── .gitkeep
 │
-├── .env
 ├── .env.example
 ├── .gitignore
 ├── .dockerignore
@@ -82,25 +147,17 @@ fraud_detection/
 └── README.md
 ```
 
+The raw dataset and local SQLite database are excluded from Git.
+
+The trained model artifact is included so the API can perform inference immediately after setup without retraining the model.
+
 ---
 
 ## Dataset
 
-This project uses the PaySim mobile money fraud detection dataset.
+The project uses the PaySim mobile money fraud detection dataset.
 
-Expected dataset columns:
-
-```text
-type
-amount
-oldbalanceOrg
-newbalanceOrig
-oldbalanceDest
-newbalanceDest
-isFraud
-```
-
-The model uses these input features:
+The model uses the following transaction features:
 
 ```text
 type
@@ -111,235 +168,206 @@ oldbalanceDest
 newbalanceDest
 ```
 
-Target column:
+Target:
 
 ```text
 isFraud
 ```
 
-The dataset file should be placed at:
+The training sample contains 1,000,000 transactions:
 
-```text
-data/fraud.csv
-```
+| Class     | Samples |
+| --------- | ------: |
+| Non-fraud | 998,734 |
+| Fraud     |   1,266 |
+
+The severe class imbalance makes accuracy alone unsuitable as the primary evaluation metric.
 
 ---
 
-## Model Training
+## Model Training Pipeline
 
-The model is trained using a scikit-learn pipeline.
-
-The pipeline includes:
-
-* OneHotEncoder for transaction type
-* StandardScaler for numerical features
-* RandomForestClassifier for fraud classification
-
-To train the model, run:
-
-```bash
-python app/ml/train_model.py
-```
-
-The trained model is saved to:
+The machine learning pipeline consists of:
 
 ```text
-app/ml/fraud_model.pkl
+Transaction Data
+       |
+       v
+ColumnTransformer
+       |
+       +---- Transaction Type ----> OneHotEncoder
+       |
+       +---- Numerical Features ---> StandardScaler
+       |
+       v
+RandomForestClassifier
+       |
+       v
+Fraud Probability
 ```
+
+The Random Forest is configured with class balancing to account for the highly imbalanced target distribution.
+
+The complete preprocessing and classifier pipeline is persisted using `joblib`.
 
 The saved model package contains:
 
-* Trained model pipeline
-* Selected fraud threshold
-* Model version
-* scikit-learn version
-* Feature list
+* trained scikit-learn pipeline;
+* selected fraud threshold;
+* model version;
+* scikit-learn version;
+* expected feature list.
 
 ---
 
-## Model Evaluation
+## Train, Validation and Test Strategy
 
-The dataset is highly imbalanced, so accuracy alone is misleading.
+The 1,000,000 transaction sample is split into:
 
-A model can achieve very high accuracy by predicting almost every transaction as non-fraud. Therefore, this project evaluates the model using fraud-class focused metrics.
+| Dataset    | Percentage | Samples |
+| ---------- | ---------: | ------: |
+| Training   |        70% | 700,000 |
+| Validation |        15% | 150,000 |
+| Test       |        15% | 150,000 |
 
-The model is evaluated using:
+The training set is used to fit the model.
 
-* Confusion matrix
-* Fraud precision
-* Fraud recall
-* Fraud F1-score
-* ROC-AUC
-* PR-AUC
-* Threshold analysis
+The validation set is used to select the binary fraud classification threshold based on fraud-class F1 score.
 
-The training script tests multiple probability thresholds and selects the best threshold based on F1-score.
-
-Example threshold analysis:
+The test set remains untouched during threshold selection and is used only for final model evaluation.
 
 ```text
-Threshold: 0.2 | Precision: ... | Recall: ... | F1: ...
-Threshold: 0.3 | Precision: ... | Recall: ... | F1: ...
-Threshold: 0.4 | Precision: ... | Recall: ... | F1: ...
-Threshold: 0.5 | Precision: ... | Recall: ... | F1: ...
-Threshold: 0.6 | Precision: ... | Recall: ... | F1: ...
-Threshold: 0.7 | Precision: ... | Recall: ... | F1: ...
-Threshold: 0.8 | Precision: ... | Recall: ... | F1: ...
-```
+Training Set
+     |
+     v
+Fit ML Pipeline
 
-The selected threshold is stored with the model and used during API inference.
+Validation Set
+     |
+     v
+Threshold Analysis
+     |
+     v
+Select Best Threshold
 
----
-
-## Environment Variables
-
-Create a `.env` file in the project root.
-
-Example:
-
-```env
-APP_NAME=Fraud Detection API
-APP_VERSION=1.0.0
-
-DATABASE_URL=sqlite:///./storage/fraud_detection.db
-
-SECRET_KEY=change-this-secret-key-later
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=60
-
-MODEL_PATH=app/ml/fraud_model.pkl
-DEFAULT_FRAUD_THRESHOLD=0.5
-DEFAULT_MODEL_VERSION=v1.0
-```
-
-For production, replace `SECRET_KEY` with a secure secret key.
-
----
-
-## Setup Instructions
-
-### 1. Clone the repository
-
-```bash
-git clone <your-repo-url>
-cd fraud_detection
-```
-
-Replace `<your-repo-url>` with your actual GitHub repository URL.
-
-### 2. Create virtual environment
-
-```bash
-python -m venv venv
-```
-
-Activate it on Windows:
-
-```bash
-venv\Scripts\activate
-```
-
-### 3. Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Create `.env`
-
-Copy `.env.example` to `.env`.
-
-On Windows:
-
-```bash
-copy .env.example .env
-```
-
-### 5. Add dataset
-
-Place the dataset at:
-
-```text
-data/fraud.csv
-```
-
-### 6. Train the model
-
-```bash
-python app/ml/train_model.py
-```
-
-### 7. Run the API server locally
-
-```bash
-uvicorn app.main:app --reload
-```
-
-Open Swagger UI:
-
-```text
-http://127.0.0.1:8000/docs
+Untouched Test Set
+     |
+     v
+Final Evaluation
 ```
 
 ---
 
-## Docker Setup
+## Threshold Analysis
 
-Build and run the API using Docker Compose:
+Fraud classification is not performed using the default `0.5` probability threshold automatically.
 
-```bash
-docker compose up --build
-```
+Multiple thresholds are evaluated on the validation set:
 
-The API will be available at:
+| Threshold |  Precision |     Recall |         F1 |
+| --------: | ---------: | ---------: | ---------: |
+|       0.2 |     0.0502 |     0.9737 |     0.0955 |
+|       0.3 |     0.0716 |     0.9632 |     0.1333 |
+|       0.4 |     0.1078 |     0.9474 |     0.1937 |
+|       0.5 |     0.1525 |     0.9316 |     0.2620 |
+|       0.6 |     0.2182 |     0.9105 |     0.3520 |
+|       0.7 |     0.3340 |     0.8842 |     0.4848 |
+|   **0.8** | **0.5236** | **0.8158** | **0.6379** |
 
-```text
-http://127.0.0.1:8000/docs
-```
-
-To stop the container:
-
-```bash
-docker compose down
-```
-
-The SQLite database is persisted locally at:
+The best validation F1 score is obtained at:
 
 ```text
-storage/fraud_detection.db
+Fraud Threshold = 0.8
 ```
 
-This allows user accounts and prediction history to remain available after restarting the container.
+The selected threshold is stored with the trained model and loaded by the inference service.
+
+---
+
+## Final Test Performance
+
+The selected threshold is evaluated on the untouched 150,000-transaction test set.
+
+### Fraud Class Metrics
+
+| Metric    |  Score |
+| --------- | -----: |
+| Precision |   0.55 |
+| Recall    |   0.86 |
+| F1 Score  |   0.67 |
+| ROC-AUC   | 0.9992 |
+| PR-AUC    | 0.8643 |
+
+### Confusion Matrix
+
+```text
+                 Predicted
+               Normal   Fraud
+
+Actual Normal   149675    135
+Actual Fraud        26    164
+```
+
+The model detected 164 of 190 fraudulent transactions in the test set while falsely flagging 135 legitimate transactions.
+
+Because fraud represents a very small fraction of the dataset, the project focuses primarily on fraud recall, fraud precision, fraud F1 score and PR-AUC rather than overall accuracy.
 
 ---
 
 ## API Endpoints
 
-| Method | Endpoint                       | Auth Required | Description                                 |
-| ------ | ------------------------------ | ------------: | ------------------------------------------- |
-| GET    | `/`                            |            No | Root endpoint                               |
-| GET    | `/health`                      |            No | Health check                                |
-| POST   | `/auth/register`               |            No | Register a new user                         |
-| POST   | `/auth/login`                  |            No | Login and get JWT token                     |
-| GET    | `/users/me`                    |           Yes | Get current logged-in user                  |
-| GET    | `/model/info`                  |           Yes | Get loaded model metadata                   |
-| POST   | `/predict`                     |           Yes | Predict whether a transaction is fraudulent |
-| GET    | `/predictions`                 |           Yes | Get current user's prediction history       |
-| GET    | `/predictions/{prediction_id}` |           Yes | Get one prediction by ID                    |
+| Method | Endpoint                       | Authentication | Description                    |
+| ------ | ------------------------------ | -------------- | ------------------------------ |
+| GET    | `/`                            | No             | API root                       |
+| GET    | `/health`                      | No             | Service health check           |
+| POST   | `/auth/register`               | No             | Register a user                |
+| POST   | `/auth/login`                  | No             | Login and obtain a JWT         |
+| GET    | `/users/me`                    | Yes            | Get authenticated user         |
+| GET    | `/model/info`                  | Yes            | Get loaded model metadata      |
+| POST   | `/predict`                     | Yes            | Run fraud inference            |
+| GET    | `/predictions`                 | Yes            | Get user prediction history    |
+| GET    | `/predictions/{prediction_id}` | Yes            | Get a specific user prediction |
 
 ---
 
 ## Authentication Flow
 
+```text
+Register
+   |
+   v
+Password hashed using Argon2
+   |
+   v
+User stored in PostgreSQL
+
+Login
+   |
+   v
+Credentials verified
+   |
+   v
+JWT access token issued
+
+Authenticated Request
+   |
+   v
+Bearer token validated
+   |
+   v
+Current user resolved
+   |
+   v
+Protected endpoint executed
+```
+
 ### Register
 
-Endpoint:
-
-```text
+```http
 POST /auth/register
 ```
 
-Request body:
+Example request:
 
 ```json
 {
@@ -350,52 +378,48 @@ Request body:
 
 ### Login
 
-Endpoint:
-
-```text
+```http
 POST /auth/login
 ```
 
-The login endpoint uses form data.
+The login endpoint accepts OAuth2-compatible form data.
 
-In Swagger UI, enter:
+Example:
 
 ```text
 username: test@example.com
 password: password123
 ```
 
-Example response:
+Successful authentication returns:
 
 ```json
 {
-  "access_token": "your-jwt-token",
+  "access_token": "<JWT_TOKEN>",
   "token_type": "bearer"
 }
 ```
 
-Use this token through Swagger UI's `Authorize` button.
+The token can be supplied through Swagger UI using the `Authorize` button.
 
 ---
 
 ## Prediction Example
 
-Endpoint:
-
-```text
+```http
 POST /predict
 ```
 
-Request body:
+Example request:
 
 ```json
 {
-  "amount": 181.0,
-  "oldbalanceOrg": 181.0,
-  "newbalanceOrig": 0.0,
-  "oldbalanceDest": 0.0,
-  "newbalanceDest": 0.0,
-  "type": "TRANSFER"
+  "type": "TRANSFER",
+  "amount": 181,
+  "oldbalanceOrg": 181,
+  "newbalanceOrig": 0,
+  "oldbalanceDest": 0,
+  "newbalanceDest": 0
 }
 ```
 
@@ -407,27 +431,45 @@ Example response:
   "prediction": "fraud",
   "risk_level": "high",
   "fraud_probability": 0.999975,
-  "threshold_used": 0.5,
+  "threshold_used": 0.8,
   "model_version": "v1.0"
 }
 ```
 
+The binary fraud decision uses the validation-selected model threshold.
+
+Risk level is a separate descriptive probability band and does not determine the binary fraud classification.
+
 ---
 
-## Model Info Example
+## Prediction History
 
-Endpoint:
+Every prediction is associated with the authenticated user and persisted in the database.
 
-```text
+```http
+GET /predictions
+```
+
+Only predictions owned by the currently authenticated user are returned.
+
+A user cannot retrieve another user's prediction by supplying its prediction ID.
+
+---
+
+## Model Metadata
+
+```http
 GET /model/info
 ```
 
-Example response:
+The endpoint exposes metadata about the currently loaded inference artifact.
+
+Example:
 
 ```json
 {
   "model_version": "v1.0",
-  "threshold_used": 0.5,
+  "threshold_used": 0.8,
   "model_type": "Pipeline",
   "features": [
     "type",
@@ -442,88 +484,165 @@ Example response:
 
 ---
 
-## Prediction History
+## Local Setup
 
-Each prediction is stored in the database and linked to the authenticated user.
+### 1. Clone the repository
 
-Endpoint:
+```bash
+git clone https://github.com/Manish-799/fraud-detection-api-001.git
+cd fraud-detection-api-001
+```
+
+### 2. Create a virtual environment
+
+```bash
+python -m venv venv
+```
+
+Windows:
+
+```bash
+venv\Scripts\activate
+```
+
+Linux/macOS:
+
+```bash
+source venv/bin/activate
+```
+
+### 3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Create environment configuration
+
+Copy `.env.example` to `.env`.
+
+Windows:
+
+```bash
+copy .env.example .env
+```
+
+Linux/macOS:
+
+```bash
+cp .env.example .env
+```
+
+For local development, SQLite can be used:
+
+```env
+DATABASE_URL=sqlite:///./storage/fraud_detection.db
+SECRET_KEY=replace-with-a-secure-secret
+```
+
+### 5. Start the API
+
+The trained model artifact is already included in the repository.
+
+```bash
+uvicorn app.main:app --reload
+```
+
+Open:
 
 ```text
-GET /predictions
-```
-
-Only the logged-in user's predictions are returned.
-
-Example response:
-
-```json
-[
-  {
-    "id": 1,
-    "user_id": 1,
-    "transaction_type": "TRANSFER",
-    "amount": 181.0,
-    "oldbalanceOrg": 181.0,
-    "newbalanceOrig": 0.0,
-    "oldbalanceDest": 0.0,
-    "newbalanceDest": 0.0,
-    "prediction": "fraud",
-    "fraud_probability": 0.999975,
-    "created_at": "2026-07-03T12:00:00"
-  }
-]
+http://127.0.0.1:8000/docs
 ```
 
 ---
 
-## Why Accuracy Is Not Enough
+## Retraining the Model
 
-Fraud detection datasets are highly imbalanced. Most transactions are non-fraud.
+Retraining requires the PaySim dataset.
 
-A model can get very high accuracy by predicting every transaction as non-fraud. That is not useful for fraud detection.
+Place the dataset at:
 
-This project focuses on:
+```text
+data/fraud.csv
+```
 
-* Fraud precision
-* Fraud recall
-* Fraud F1-score
-* PR-AUC
-* Threshold tuning
+Run:
 
-These metrics are more useful for evaluating performance on the minority fraud class.
+```bash
+python -m app.ml.train_model
+```
+
+The newly trained artifact is saved to:
+
+```text
+app/ml/fraud_model.pkl
+```
+
+Threshold selection is performed on the validation set before final evaluation on the untouched test set.
 
 ---
 
-## Current Status
+## Docker
 
-Completed:
+Build the image:
 
-* FastAPI backend
-* ML model training
-* Model inference endpoint
-* JWT authentication
-* User registration and login
-* Protected prediction endpoint
-* User-specific prediction history
-* SQLAlchemy database integration
-* SQLite database persistence
-* Environment variable configuration
-* Model metadata endpoint
-* Swagger API documentation
-* Dockerfile
-* Docker Compose setup
+```bash
+docker build -t fraud-detection-api .
+```
+
+Run locally:
+
+```bash
+docker run --rm -p 8000:8000 --env-file .env fraud-detection-api
+```
+
+The container reads the server port from the `PORT` environment variable and defaults to port `8000` for local execution.
+
+Docker Compose is also supported:
+
+```bash
+docker compose up --build
+```
+
+---
+
+## Production Deployment
+
+The API is deployed using:
+
+```text
+GitHub
+   |
+   v
+Render Docker Web Service
+   |
+   v
+FastAPI + ML Inference
+   |
+   v
+Neon PostgreSQL
+```
+
+Render builds the service directly from the repository Dockerfile.
+
+Production secrets and the PostgreSQL connection URL are supplied through environment variables and are not committed to Git.
 
 ---
 
 ## Future Improvements
 
-* PostgreSQL support
+* Automated API tests
+* GitHub Actions CI pipeline
 * Alembic database migrations
+* Persist model version and decision threshold with each prediction record
+* Model probability calibration
+* Advanced fraud feature engineering
 * Rate limiting
-* Admin dashboard
-* Streamlit frontend
-* Better feature engineering
-* Model calibration
-* Automated tests
-* CI/CD pipeline
-* Deployment on Render or Railway
+
+---
+
+## Disclaimer
+
+This project is an educational machine learning and backend engineering system.
+
+It is not intended for real-world financial decision-making without further model validation, calibration, monitoring, security review and domain-specific risk controls.

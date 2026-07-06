@@ -31,6 +31,9 @@ https://fraud-detection-api-tzp4.onrender.com/health
 * Validation-based classification threshold tuning
 * Fraud risk-level scoring
 * Model version and metadata endpoint
+* Automatic API testing with pytest
+* GitHub Actions continuous integration
+* Model version and decision-threshold persistence for prediction history
 * Environment-based configuration
 * Docker and Docker Compose support
 * Render deployment
@@ -116,7 +119,11 @@ https://fraud-detection-api-tzp4.onrender.com/health
 
 ```text
 fraud-detection-api/
-|
+│
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+│
 ├── app/
 │   ├── main.py
 │   ├── config.py
@@ -131,6 +138,12 @@ fraud-detection-api/
 │       ├── train_model.py
 │       ├── predictor.py
 │       └── fraud_model.pkl
+│
+├── tests/
+│   ├── conftest.py
+│   ├── test_auth.py
+│   ├── test_health.py
+│   └── test_predictions.py
 │
 ├── data/
 │   └── .gitkeep
@@ -274,7 +287,7 @@ Multiple thresholds are evaluated on the validation set:
 |       0.7 |     0.3340 |     0.8842 |     0.4848 |
 |   **0.8** | **0.5236** | **0.8158** | **0.6379** |
 
-The best validation F1 score is obtained at:
+Among the evaluated thresholds, the highest validation F1 score was obtained at:
 
 ```text
 Fraud Threshold = 0.8
@@ -631,13 +644,11 @@ Production secrets and the PostgreSQL connection URL are supplied through enviro
 
 ## Future Improvements
 
-* Automated API tests
-* GitHub Actions CI pipeline
-* Alembic database migrations
-* Persist model version and decision threshold with each prediction record
-* Model probability calibration
-* Advanced fraud feature engineering
-* Rate limiting
+- Alembic database migrations
+- Model probability calibration
+- Advanced fraud feature engineering
+- Rate limiting
+- Model monitoring and drift detection
 
 ---
 

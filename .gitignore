@@ -6,7 +6,6 @@ __pycache__/
 
 storage/*.db
 
-app/ml/fraud_model.pkl
 data/fraud.csv
 
 .ipynb_checkpoints/

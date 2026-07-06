@@ -10,3 +10,4 @@ pwdlib[argon2]
 python-multipart
 pydantic-settings
 email-validator
+psycopg[binary]

@@ -104,18 +104,31 @@ def train():
     print("\nClass distribution:")
     print(y.value_counts())
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y,
-        test_size=0.2,
-        random_state=42,
-        stratify=y,
+    X_train, X_temp, y_train, y_temp = train_test_split(
+    X,
+    y,
+    test_size=0.3,
+    random_state=42,
+    stratify=y,
     )
+
+    X_val, X_test, y_val, y_test = train_test_split(
+        X_temp,
+        y_temp,
+        test_size=0.5,
+        random_state=42,
+        stratify=y_temp,
+    )
+
+    print("\nDataset Split:")
+    print(f"Training samples: {len(X_train)}")
+    print(f"Validation samples: {len(X_val)}")
+    print(f"Test samples: {len(X_test)}")
 
     pipeline = build_pipeline()
     pipeline.fit(X_train, y_train)
 
-    y_prob = pipeline.predict_proba(X_test)[:, 1]
+    y_val_prob = pipeline.predict_proba(X_val)[:, 1]
 
     thresholds = [
         0.2,
@@ -133,22 +146,22 @@ def train():
     best_f1 = 0.0
 
     for threshold in thresholds:
-        y_pred_threshold = (y_prob >= threshold).astype(int)
+        y_pred_threshold = (y_val_prob >= threshold).astype(int)
 
         precision = precision_score(
-            y_test,
+            y_val,
             y_pred_threshold,
             zero_division=0,
         )
 
         recall = recall_score(
-            y_test,
+            y_val,
             y_pred_threshold,
             zero_division=0,
         )
 
         f1 = f1_score(
-            y_test,
+            y_val,
             y_pred_threshold,
             zero_division=0,
         )
@@ -164,9 +177,12 @@ def train():
             best_f1 = f1
             best_threshold = threshold
 
+        
     print(f"\nBest threshold based on F1: {best_threshold}")
 
-    y_pred_final = (y_prob >= best_threshold).astype(int)
+    y_test_prob = pipeline.predict_proba(X_test)[:, 1]
+
+    y_pred_final = (y_test_prob >= best_threshold).astype(int)
 
     print("\nConfusion Matrix:")
     print(confusion_matrix(y_test, y_pred_final))
@@ -175,10 +191,10 @@ def train():
     print(classification_report(y_test, y_pred_final))
 
     print("\nROC-AUC Score:")
-    print(roc_auc_score(y_test, y_prob))
+    print(roc_auc_score(y_test, y_test_prob))
 
     print("\nPR-AUC Score:")
-    print(average_precision_score(y_test, y_prob))
+    print(average_precision_score(y_test, y_test_prob))
 
     model_package = {
         "model": pipeline,

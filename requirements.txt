@@ -12,4 +12,4 @@ pydantic-settings
 email-validator
 psycopg[binary]
 pytest
-httpx
+httpx2

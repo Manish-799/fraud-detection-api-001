@@ -45,15 +45,16 @@ class PredictionRecord(BaseModel):
 
     transaction_type: str
     amount: float
-
     oldbalanceOrg: float
     newbalanceOrig: float
-
     oldbalanceDest: float
     newbalanceDest: float
 
     prediction: str
+    risk_level: str
     fraud_probability: float
+    threshold_used: float
+    model_version: str
 
     created_at: datetime
 

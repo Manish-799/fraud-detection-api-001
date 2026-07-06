@@ -42,10 +42,35 @@ class Prediction(Base):
     oldbalanceDest = Column(Float, nullable=False)
     newbalanceDest = Column(Float, nullable=False)
 
-    prediction = Column(String, nullable=False)
-    fraud_probability = Column(Float, nullable=False)
+    prediction = Column(
+        String,
+        nullable=False,
+    )
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    risk_level = Column(
+        String,
+        nullable=False,
+    )
+
+    fraud_probability = Column(
+        Float,
+        nullable=False,
+    )
+
+    threshold_used = Column(
+        Float,
+        nullable=False,
+    )
+
+    model_version = Column(
+        String,
+        nullable=False,
+    )
+
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+    )
 
     user = relationship(
         "User",

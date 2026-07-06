@@ -144,17 +144,20 @@ def predict_fraud(
         db=db,
         transaction=transaction,
         prediction=result["prediction"],
+        risk_level=result["risk_level"],
         fraud_probability=result["fraud_probability"],
+        threshold_used=result["threshold_used"],
+        model_version=result["model_version"],
         user_id=current_user.id,
     )
 
     return PredictionResponse(
         prediction_id=db_prediction.id,
-        prediction=result["prediction"],
-        risk_level=result["risk_level"],
-        fraud_probability=result["fraud_probability"],
-        threshold_used=result["threshold_used"],
-        model_version=result["model_version"],
+        prediction=db_prediction.prediction,
+        risk_level=db_prediction.risk_level,
+        fraud_probability=db_prediction.fraud_probability,
+        threshold_used=db_prediction.threshold_used,
+        model_version=db_prediction.model_version,
     )
 
 

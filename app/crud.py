@@ -35,7 +35,10 @@ def create_prediction_record(
     db: Session,
     transaction: TransactionInput,
     prediction: str,
+    risk_level: str,
     fraud_probability: float,
+    threshold_used: float,
+    model_version: str,
     user_id: int,
 ):
     db_prediction = models.Prediction(
@@ -47,7 +50,10 @@ def create_prediction_record(
         oldbalanceDest=transaction.oldbalanceDest,
         newbalanceDest=transaction.newbalanceDest,
         prediction=prediction,
+        risk_level=risk_level,
         fraud_probability=fraud_probability,
+        threshold_used=threshold_used,
+        model_version=model_version,
     )
 
     db.add(db_prediction)

@@ -111,6 +111,12 @@ def test_prediction_history(client):
 
     assert data[0]["amount"] == 181
 
+    assert data[0]["risk_level"] == "high"
+
+    assert data[0]["threshold_used"] == 0.8
+
+    assert data[0]["model_version"] == "v1.0"
+
 
 def test_user_cannot_read_another_users_prediction(
     client,

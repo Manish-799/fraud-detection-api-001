@@ -5,7 +5,7 @@ __pycache__/
 .env
 
 storage/*.db
-
+storage/test_fraud_detection.db
 data/fraud.csv
 
 .ipynb_checkpoints/

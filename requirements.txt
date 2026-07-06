@@ -11,3 +11,5 @@ python-multipart
 pydantic-settings
 email-validator
 psycopg[binary]
+pytest
+httpx

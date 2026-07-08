@@ -1,5 +1,5 @@
 # Fraud Detection API
-
+[![API Tests](https://github.com/Manish-799/fraud-detection-api-001/actions/workflows/ci.yml/badge.svg)](https://github.com/Manish-799/fraud-detection-api-001/actions/workflows/ci.yml)
 A production-oriented machine learning backend for real-time financial transaction fraud detection.
 
 The project serves a trained scikit-learn fraud detection pipeline through a JWT-secured FastAPI REST API. It supports authenticated predictions, user-specific prediction history, PostgreSQL persistence, model metadata, Dockerized deployment, and probability-threshold tuning for an imbalanced fraud dataset.

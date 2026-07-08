@@ -91,6 +91,7 @@ class Token(BaseModel):
 
 class ModelInfoResponse(BaseModel):
     model_version: str
+    sklearn_version: str
     threshold_used: float
     model_type: str
     features: list[str]

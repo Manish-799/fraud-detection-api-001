@@ -26,6 +26,11 @@ if isinstance(model_package, dict):
         settings.default_model_version,
     )
 
+    SKLEARN_VERSION = model_package.get(
+        "sklearn_version",
+        "unknown",
+    )
+
     FEATURES = model_package.get(
         "features",
         [],
@@ -34,6 +39,7 @@ else:
     model = model_package
     FRAUD_THRESHOLD = settings.default_fraud_threshold
     MODEL_VERSION = settings.default_model_version
+    SKLEARN_VERSION = "unknown"
     FEATURES = []
 
 
@@ -78,6 +84,7 @@ def predict_transaction(transaction_data: dict) -> dict:
 def get_model_info() -> dict:
     return {
         "model_version": MODEL_VERSION,
+        "sklearn_version": SKLEARN_VERSION,
         "threshold_used": FRAUD_THRESHOLD,
         "model_type": type(model).__name__,
         "features": FEATURES,

@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.config import settings
@@ -163,8 +163,8 @@ def predict_fraud(
 
 @app.get("/predictions", response_model=List[PredictionRecord])
 def read_predictions(
-    skip: int = 0,
-    limit: int = 20,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):

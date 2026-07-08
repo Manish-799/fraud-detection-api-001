@@ -151,3 +151,26 @@ def test_user_cannot_read_another_users_prediction(
     assert response.json()["detail"] == (
         "Prediction not found"
     )
+
+
+def test_model_info(client):
+    token = register_and_login(
+        client,
+        email="modelinfo@example.com",
+    )
+
+    response = client.get(
+        "/model/info",
+        headers=get_auth_headers(token),
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["model_version"] == "v1.0"
+    assert data["threshold_used"] == 0.8
+    assert "sklearn_version" in data
+    assert data["sklearn_version"]
+    assert "model_type" in data
+    assert "features" in data

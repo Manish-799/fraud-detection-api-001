@@ -484,6 +484,7 @@ Example:
 ```json
 {
   "model_version": "v1.0",
+  "sklearn_version": "1.9.0",
   "threshold_used": 0.8,
   "model_type": "Pipeline",
   "features": [
